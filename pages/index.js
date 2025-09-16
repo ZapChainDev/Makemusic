@@ -30,16 +30,29 @@ export default function Home() {
 		setLoading(true);
 		setStatus(null);
 		try {
-			const res = await fetch(`/api/postBlog`, { credentials: 'include' });
-			const data = await res.json();
-			if (!res.ok) throw new Error(data.error || 'Failed to post blog');
-			if (data.duplicate) {
+			const res = await fetch(`/api/postBlog`, {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({})
+			});
+			let data = null;
+			try {
+				data = await res.json();
+			} catch (_) {
+				// Non-JSON error response
+			}
+			if (!res.ok) {
+				const message = (data && data.error) || `Request failed (${res.status})`;
+				throw new Error(message);
+			}
+			if (data && data.duplicate) {
 				setStatus({ ok: true, message: `Already posted today: ${data.link}` });
 			} else {
-				setStatus({ ok: true, message: `Posted: ${data.link || data.url || 'Success'}` });
+				setStatus({ ok: true, message: `Posted: ${(data && (data.link || data.url)) || 'Success'}` });
 			}
 		} catch (err) {
-			setStatus({ ok: false, message: err.message });
+			setStatus({ ok: false, message: err.message || 'Something went wrong' });
 		} finally {
 			setLoading(false);
 		}
