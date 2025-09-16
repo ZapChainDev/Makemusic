@@ -8,14 +8,14 @@ function toBase64(str) {
 
 function isAuthorized(req) {
 	if (process.env.NODE_ENV !== 'production') return true;
-	const vercelCronHeader = req.headers['x-vercel-cron'];
-	if (vercelCronHeader) return true;
+	// Allow scheduled runs
+	if (req.headers['x-vercel-cron']) return true;
+	// Allow logged-in site users
 	const cookieAuth = req.cookies?.site_auth === '1' || req.cookies?.get?.('site_auth')?.value === '1';
 	if (cookieAuth) return true;
-	const secretFromQuery = (req.query && req.query.secret) || (req.body && req.body.secret);
-	const secretKey = process.env.SECRET_KEY;
-	const cronSecret = process.env.CRON_SECRET;
-	if (secretFromQuery && (secretFromQuery === secretKey || secretFromQuery === cronSecret)) return true;
+	// Allow manual trigger with CRON_SECRET
+	const provided = (req.query && req.query.secret) || (req.body && req.body.secret);
+	if (provided && process.env.CRON_SECRET && provided === process.env.CRON_SECRET) return true;
 	return false;
 }
 
