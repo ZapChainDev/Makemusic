@@ -12,9 +12,10 @@ function isAuthorized(req) {
 	if (vercelCronHeader) return true;
 	const cookieAuth = req.cookies?.site_auth === '1' || req.cookies?.get?.('site_auth')?.value === '1';
 	if (cookieAuth) return true;
-	const secretFromEnv = process.env.SECRET_KEY;
 	const secretFromQuery = (req.query && req.query.secret) || (req.body && req.body.secret);
-	if (secretFromEnv && secretFromQuery === secretFromEnv) return true;
+	const secretKey = process.env.SECRET_KEY;
+	const cronSecret = process.env.CRON_SECRET;
+	if (secretFromQuery && (secretFromQuery === secretKey || secretFromQuery === cronSecret)) return true;
 	return false;
 }
 
@@ -143,7 +144,6 @@ export default async function handler(req, res) {
 		if (isCron && !force) {
 			const dupe = await ensureNotDuplicate(baseDailySlug);
 			if (dupe.exists) {
-				// If today's post already exists, still create another cron post with a time suffix
 				finalSlug = `${baseDailySlug}-cron-${timeSlug}`;
 			}
 		}
