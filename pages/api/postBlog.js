@@ -42,15 +42,23 @@ function sanitizeSlug(text) {
 
 async function generateSeoPost(seed) {
 	const prompt = `You are an expert copywriter for a carpet installation company.
-Write a single 600-800 word SEO-friendly blog post with:
-- A compelling H1 title about carpet installation tips
-- Multiple H2 sections with actionable tips
-- Optional H3 subsections for details
-- Include keywords naturally: carpet installation, padding, subfloor, seams, stretching, professional installer, DIY
-- Use a friendly, trustworthy tone
-- End with a short call-to-action for contacting a local professional
-- IMPORTANT: Use a fresh angle and vary structure and wording from any prior outputs. Uniqueness seed: ${seed}
-Return valid HTML with <h1>, <h2>, <h3>, <p>, and <ul>/<li> when appropriate.`;
+Write a unique 600–800 word SEO-friendly blog post with the following requirements:
+
+Use a fresh, distinctive H1 title focused on carpet installation tips (make sure it doesn’t repeat common phrases).
+
+Organize content with H2 sections for main tips and optional H3 subsections for deeper details.
+
+Naturally include these keywords throughout the article: carpet installation, padding, subfloor, seams, stretching, professional installer, DIY.
+
+Maintain a friendly, approachable, and trustworthy tone suitable for homeowners.
+
+Provide practical, actionable advice with clear examples or step-by-step insights.
+
+End with a concise call-to-action encouraging readers to contact a local professional for help.
+
+Ensure the content feels fresh, original, and structured differently from standard carpet installation blogs. Use the uniqueness seed: ${seed} to guarantee variation in topic angle, structure, and phrasing.
+
+Output should be valid HTML using <h1>, <h2>, <h3>, <p>, and <ul>/<li> tags when appropriate.`;
 	const response = await openai.chat.completions.create({
 		model: 'gpt-4o-mini',
 		messages: [
@@ -130,11 +138,14 @@ export default async function handler(req, res) {
 
 		// Cron uses stable daily slug; manual always uses unique slug with time
 		const baseDailySlug = sanitizeSlug(`carpet-installation-tips-${dateSlug}`);
-		const finalSlug = isCron && !force ? baseDailySlug : `${baseDailySlug}-${timeSlug}`;
+		let finalSlug = isCron && !force ? baseDailySlug : `${baseDailySlug}-${timeSlug}`;
 
 		if (isCron && !force) {
 			const dupe = await ensureNotDuplicate(baseDailySlug);
-			if (dupe.exists) return res.status(200).json({ success: true, duplicate: true, ...dupe.post });
+			if (dupe.exists) {
+				// If today's post already exists, still create another cron post with a time suffix
+				finalSlug = `${baseDailySlug}-cron-${timeSlug}`;
+			}
 		}
 
 		let featuredMediaId = undefined, imageUrl = undefined;
@@ -146,7 +157,7 @@ export default async function handler(req, res) {
 		let contentWithImage = post.content;
 		if (imageUrl) contentWithImage = contentWithImage.replace(/<h1[^>]*>.*?<\/h1>/i, (m) => `${m}\n<p><img src="${imageUrl}" alt="${post.title}" style="max-width:100%;height:auto;border-radius:8px" /></p>`);
 		const wp = await postToWordPress({ title: post.title, content: contentWithImage, slug: finalSlug, featuredMediaId });
-		return res.status(200).json({ success: true, ...wp, forced: !isCron || force });
+		return res.status(200).json({ success: true, ...wp, cron: isCron, forced: !isCron || force });
 	} catch (err) {
 		return res.status(500).json({ error: err.message || 'Internal Server Error' });
 	}
