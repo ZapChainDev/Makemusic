@@ -6,10 +6,17 @@ function toBase64(str) {
 	return Buffer.from(str, 'utf8').toString('base64');
 }
 
+function hasCronHeader(req) {
+	const h = req.headers || {};
+	const val = h['x-vercel-cron'] ?? h['x-vercel-schedule'];
+	if (Array.isArray(val)) return val.length > 0 && Boolean(val[0]);
+	return typeof val !== 'undefined' && String(val).length > 0;
+}
+
 function isAuthorized(req) {
 	if (process.env.NODE_ENV !== 'production') return true;
-	// Allow scheduled runs
-	if (req.headers['x-vercel-cron']) return true;
+	// Allow scheduled runs (manual and scheduled) via Vercel header
+	if (hasCronHeader(req)) return true;
 	// Allow logged-in site users
 	const cookieAuth = req.cookies?.site_auth === '1' || req.cookies?.get?.('site_auth')?.value === '1';
 	if (cookieAuth) return true;
@@ -129,7 +136,7 @@ export default async function handler(req, res) {
 			return res.status(401).json({ error: 'Unauthorized' });
 		}
 
-		const isCron = Boolean(req.headers['x-vercel-cron']);
+		const isCron = hasCronHeader(req);
 		const force = req.method === 'GET' ? req.query?.force === '1' : Boolean(req.body?.force);
 		const seed = new Date().toISOString();
 
