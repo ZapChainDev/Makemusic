@@ -27,11 +27,20 @@ function formatDateSlug() {
 	return `${y}-${m}-${day}`;
 }
 
+function formatTimeSlug() {
+	const tz = 'America/New_York';
+	const d = new Date();
+	const hh = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hour12: false }).format(d);
+	const mm = new Intl.DateTimeFormat('en-GB', { timeZone: tz, minute: '2-digit' }).format(d);
+	const ss = new Intl.DateTimeFormat('en-GB', { timeZone: tz, second: '2-digit' }).format(d);
+	return `${hh}${mm}${ss}`; // HHMMSS
+}
+
 function sanitizeSlug(text) {
 	return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-');
 }
 
-async function generateSeoPost() {
+async function generateSeoPost(seed) {
 	const prompt = `You are an expert copywriter for a carpet installation company.
 Write a single 600-800 word SEO-friendly blog post with:
 - A compelling H1 title about carpet installation tips
@@ -40,6 +49,7 @@ Write a single 600-800 word SEO-friendly blog post with:
 - Include keywords naturally: carpet installation, padding, subfloor, seams, stretching, professional installer, DIY
 - Use a friendly, trustworthy tone
 - End with a short call-to-action for contacting a local professional
+- IMPORTANT: Use a fresh angle and vary structure and wording from any prior outputs. Uniqueness seed: ${seed}
 Return valid HTML with <h1>, <h2>, <h3>, <p>, and <ul>/<li> when appropriate.`;
 	const response = await openai.chat.completions.create({
 		model: 'gpt-4o-mini',
@@ -47,7 +57,7 @@ Return valid HTML with <h1>, <h2>, <h3>, <p>, and <ul>/<li> when appropriate.`;
 			{ role: 'system', content: 'Produce clean, semantic HTML only. No markdown.' },
 			{ role: 'user', content: prompt }
 		],
-		temperature: 0.7,
+		temperature: 0.8,
 		max_tokens: 1200
 	});
 	const html = response.choices?.[0]?.message?.content?.trim();
@@ -109,21 +119,34 @@ export default async function handler(req, res) {
 		if (!isAuthorized(req)) {
 			return res.status(401).json({ error: 'Unauthorized' });
 		}
-		const post = await generateSeoPost();
+
+		const isCron = Boolean(req.headers['x-vercel-cron']);
+		const force = req.method === 'GET' ? req.query?.force === '1' : Boolean(req.body?.force);
+		const seed = new Date().toISOString();
+
+		const post = await generateSeoPost(seed);
 		const dateSlug = formatDateSlug();
-		const baseSlug = sanitizeSlug(`carpet-installation-tips-${dateSlug}`);
-		const dupe = await ensureNotDuplicate(baseSlug);
-		if (dupe.exists) return res.status(200).json({ success: true, duplicate: true, ...dupe.post });
+		const timeSlug = formatTimeSlug();
+
+		// Cron uses stable daily slug; manual always uses unique slug with time
+		const baseDailySlug = sanitizeSlug(`carpet-installation-tips-${dateSlug}`);
+		const finalSlug = isCron && !force ? baseDailySlug : `${baseDailySlug}-${timeSlug}`;
+
+		if (isCron && !force) {
+			const dupe = await ensureNotDuplicate(baseDailySlug);
+			if (dupe.exists) return res.status(200).json({ success: true, duplicate: true, ...dupe.post });
+		}
+
 		let featuredMediaId = undefined, imageUrl = undefined;
 		try {
 			const imageBuffer = await generateImageB64(post.title);
-			const uploaded = await uploadFeaturedImage(imageBuffer, `carpet-tips-${dateSlug}.png`);
+			const uploaded = await uploadFeaturedImage(imageBuffer, `carpet-tips-${dateSlug}-${timeSlug}.png`);
 			featuredMediaId = uploaded.id; imageUrl = uploaded.url;
 		} catch (_) {}
 		let contentWithImage = post.content;
 		if (imageUrl) contentWithImage = contentWithImage.replace(/<h1[^>]*>.*?<\/h1>/i, (m) => `${m}\n<p><img src="${imageUrl}" alt="${post.title}" style="max-width:100%;height:auto;border-radius:8px" /></p>`);
-		const wp = await postToWordPress({ title: post.title, content: contentWithImage, slug: baseSlug, featuredMediaId });
-		return res.status(200).json({ success: true, ...wp });
+		const wp = await postToWordPress({ title: post.title, content: contentWithImage, slug: finalSlug, featuredMediaId });
+		return res.status(200).json({ success: true, ...wp, forced: !isCron || force });
 	} catch (err) {
 		return res.status(500).json({ error: err.message || 'Internal Server Error' });
 	}
