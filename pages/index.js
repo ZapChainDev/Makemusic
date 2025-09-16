@@ -30,7 +30,7 @@ export default function Home() {
 		setLoading(true);
 		setStatus(null);
 		try {
-			const res = await fetch(`/api/postBlog`);
+			const res = await fetch(`/api/postBlog`, { credentials: 'include' });
 			const data = await res.json();
 			if (!res.ok) throw new Error(data.error || 'Failed to post blog');
 			if (data.duplicate) {

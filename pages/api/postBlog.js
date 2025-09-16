@@ -14,6 +14,10 @@ function isAuthorized(req) {
 	const vercelCronHeader = req.headers['x-vercel-cron'];
 	if (vercelCronHeader) return true;
 
+	// Allow authenticated site users (logged in via SITE_PASSWORD)
+	const cookieAuth = req.cookies?.site_auth === '1' || req.cookies?.get?.('site_auth')?.value === '1';
+	if (cookieAuth) return true;
+
 	// Fallback: allow with shared secret when provided explicitly (for manual triggers)
 	const secretFromEnv = process.env.SECRET_KEY;
 	const secretFromQuery = (req.query && req.query.secret) || (req.body && req.body.secret);
