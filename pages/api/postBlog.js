@@ -6,6 +6,8 @@ function toBase64(str) {
 	return Buffer.from(str, 'utf8').toString('base64');
 }
 
+const HARDCODED_CRON_SECRET = 'mySuperSecretKey';
+
 function hasCronHeader(req) {
 	const h = req.headers || {};
 	const val = h['x-vercel-cron'] ?? h['x-vercel-schedule'];
@@ -15,14 +17,16 @@ function hasCronHeader(req) {
 
 function isAuthorized(req) {
 	if (process.env.NODE_ENV !== 'production') return true;
-	// Allow scheduled runs (manual and scheduled) via Vercel header
+	// If a secret is provided, it MUST match the hardcoded value
+	const provided = (req.query && req.query.secret) || (req.body && req.body.secret);
+	if (typeof provided !== 'undefined') {
+		return provided === HARDCODED_CRON_SECRET;
+	}
+	// Otherwise allow scheduled runs via Vercel header
 	if (hasCronHeader(req)) return true;
-	// Allow logged-in site users
+	// Or allow logged-in site users via cookie
 	const cookieAuth = req.cookies?.site_auth === '1' || req.cookies?.get?.('site_auth')?.value === '1';
 	if (cookieAuth) return true;
-	// Allow manual trigger with CRON_SECRET
-	const provided = (req.query && req.query.secret) || (req.body && req.body.secret);
-	if (provided && process.env.CRON_SECRET && provided === process.env.CRON_SECRET) return true;
 	return false;
 }
 

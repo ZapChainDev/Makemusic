@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/postBlog?secret=4f7a1e3c9d8b5a2f6c1e9d0b3a8c5f2d7e1f4a9b6c3d8e5f2a1b9c4d7e0f3a5",
+      "path": "/api/postBlog?secret=mySuperSecretKey",
       "schedule": "0 13 * * *"
     }
   ]
