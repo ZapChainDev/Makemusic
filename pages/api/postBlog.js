@@ -1,59 +1,88 @@
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 function toBase64(str) {
-	return Buffer.from(str, 'utf8').toString('base64');
+  return Buffer.from(str, "utf8").toString("base64");
 }
 
-const HARDCODED_CRON_SECRET = 'mySuperSecretKey';
+const HARDCODED_CRON_SECRET = "mySuperSecretKey";
 
 function hasCronHeader(req) {
-	const h = req.headers || {};
-	const val = h['x-vercel-cron'] ?? h['x-vercel-schedule'];
-	if (Array.isArray(val)) return val.length > 0 && Boolean(val[0]);
-	return typeof val !== 'undefined' && String(val).length > 0;
+  const h = req.headers || {};
+  const val = h["x-vercel-cron"] ?? h["x-vercel-schedule"];
+  if (Array.isArray(val)) return val.length > 0 && Boolean(val[0]);
+  return typeof val !== "undefined" && String(val).length > 0;
 }
 
 function isAuthorized(req) {
-	if (process.env.NODE_ENV !== 'production') return true;
-	// If a secret is provided, it MUST match the hardcoded value
-	const provided = (req.query && req.query.secret) || (req.body && req.body.secret);
-	if (typeof provided !== 'undefined') {
-		return provided === HARDCODED_CRON_SECRET;
-	}
-	// Otherwise allow scheduled runs via Vercel header
-	if (hasCronHeader(req)) return true;
-	// Or allow logged-in site users via cookie
-	const cookieAuth = req.cookies?.site_auth === '1' || req.cookies?.get?.('site_auth')?.value === '1';
-	if (cookieAuth) return true;
-	return false;
+  // Always allow in development mode
+  if (process.env.NODE_ENV !== "production") return true;
+  // If a secret is provided, it MUST match the hardcoded value
+  const provided =
+    (req.query && req.query.secret) || (req.body && req.body.secret);
+  if (typeof provided !== "undefined") {
+    return provided === HARDCODED_CRON_SECRET;
+  }
+  // Otherwise allow scheduled runs via Vercel header
+  if (hasCronHeader(req)) return true;
+  // Or allow logged-in site users via cookie
+  const cookieAuth =
+    req.cookies?.site_auth === "1" ||
+    req.cookies?.get?.("site_auth")?.value === "1";
+  if (cookieAuth) return true;
+  return false;
 }
 
 function formatDateSlug() {
-	const tz = 'America/New_York';
-	const d = new Date();
-	const y = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric' }).format(d);
-	const m = new Intl.DateTimeFormat('en-CA', { timeZone: tz, month: '2-digit' }).format(d);
-	const day = new Intl.DateTimeFormat('en-CA', { timeZone: tz, day: '2-digit' }).format(d);
-	return `${y}-${m}-${day}`;
+  const tz = "America/New_York";
+  const d = new Date();
+  const y = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+  }).format(d);
+  const m = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    month: "2-digit",
+  }).format(d);
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    day: "2-digit",
+  }).format(d);
+  return `${y}-${m}-${day}`;
 }
 
 function formatTimeSlug() {
-	const tz = 'America/New_York';
-	const d = new Date();
-	const hh = new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', hour12: false }).format(d);
-	const mm = new Intl.DateTimeFormat('en-GB', { timeZone: tz, minute: '2-digit' }).format(d);
-	const ss = new Intl.DateTimeFormat('en-GB', { timeZone: tz, second: '2-digit' }).format(d);
-	return `${hh}${mm}${ss}`; // HHMMSS
+  const tz = "America/New_York";
+  const d = new Date();
+  const hh = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    hour: "2-digit",
+    hour12: false,
+  }).format(d);
+  const mm = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    minute: "2-digit",
+  }).format(d);
+  const ss = new Intl.DateTimeFormat("en-GB", {
+    timeZone: tz,
+    second: "2-digit",
+  }).format(d);
+  return `${hh}${mm}${ss}`; // HHMMSS
 }
 
 function sanitizeSlug(text) {
-	return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-').replace(/-+/g, '-');
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 }
 
 async function generateSeoPost(seed) {
-	const prompt = `You are an expert copywriter for a carpet installation company.
+  console.log("  🤖 Calling OpenAI API for blog post generation...");
+  const prompt = `You are an expert copywriter for a carpet installation company.
 Write a unique 600–800 word SEO-friendly blog post with the following requirements:
 
 Use a fresh, distinctive H1 title focused on carpet installation tips (make sure it doesn’t repeat common phrases).
@@ -71,105 +100,197 @@ End with a concise call-to-action encouraging readers to contact a local profess
 Ensure the content feels fresh, original, and structured differently from standard carpet installation blogs. Use the uniqueness seed: ${seed} to guarantee variation in topic angle, structure, and phrasing.
 
 Output should be valid HTML using <h1>, <h2>, <h3>, <p>, and <ul>/<li> tags when appropriate.`;
-	const response = await openai.chat.completions.create({
-		model: 'gpt-4o-mini',
-		messages: [
-			{ role: 'system', content: 'Produce clean, semantic HTML only. No markdown.' },
-			{ role: 'user', content: prompt }
-		],
-		temperature: 0.8,
-		max_tokens: 1200
-	});
-	const html = response.choices?.[0]?.message?.content?.trim();
-	if (!html) throw new Error('No content generated by OpenAI');
-	const titleMatch = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
-	const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : 'Carpet Installation Tips You Can Trust';
-	return { title, content: html };
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o-mini",
+    messages: [
+      {
+        role: "system",
+        content: "Produce clean, semantic HTML only. No markdown.",
+      },
+      { role: "user", content: prompt },
+    ],
+    temperature: 0.8,
+    max_tokens: 1200,
+  });
+  const html = response.choices?.[0]?.message?.content?.trim();
+  console.log("  ✅ OpenAI response received");
+  if (!html) throw new Error("No content generated by OpenAI");
+  const titleMatch = html.match(/<h1[^>]*>(.*?)<\/h1>/i);
+  const title = titleMatch
+    ? titleMatch[1].replace(/<[^>]+>/g, "").trim()
+    : "Carpet Installation Tips You Can Trust";
+  console.log("  📝 Extracted title:", title);
+  return { title, content: html };
 }
 
 async function generateImagePrompt(title) {
-	return `Photo-realistic, well-lit image illustrating ${title.toLowerCase()} — tools (knee kicker, carpet stretcher), padding and subfloor preparation, clean aesthetic, professional style. No text overlay.`;
+  return `Photo-realistic, well-lit image illustrating ${title.toLowerCase()} — tools (knee kicker, carpet stretcher), padding and subfloor preparation, clean aesthetic, professional style. No text overlay.`;
 }
 
 async function generateImageB64(title) {
-	const prompt = await generateImagePrompt(title);
-	const result = await openai.images.generate({ model: 'gpt-image-1', prompt, size: '1024x1024', quality: 'high' });
-	const b64 = result.data?.[0]?.b64_json;
-	if (!b64) throw new Error('No image generated by OpenAI');
-	return Buffer.from(b64, 'base64');
+  const prompt = await generateImagePrompt(title);
+  const result = await openai.images.generate({
+    model: "gpt-image-1",
+    prompt,
+    size: "1024x1024",
+    quality: "high",
+  });
+  const b64 = result.data?.[0]?.b64_json;
+  if (!b64) throw new Error("No image generated by OpenAI");
+  return Buffer.from(b64, "base64");
 }
 
 async function wpFetch(path, options = {}) {
-	const baseUrl = process.env.WP_API_URL || '';
-	if (!baseUrl) throw new Error('WP_API_URL not configured');
-	const url = baseUrl.replace(/\/$/, '') + path;
-	const authHeader = 'Basic ' + toBase64(`${process.env.WP_USER}:${process.env.WP_PASS}`);
-	return fetch(url, { ...options, headers: { 'Authorization': authHeader, ...(options.headers || {}) } });
+  const baseUrl = process.env.WP_API_URL || "";
+  if (!baseUrl) throw new Error("WP_API_URL not configured");
+  const url = baseUrl.replace(/\/$/, "") + path;
+  const authHeader =
+    "Basic " + toBase64(`${process.env.WP_USER}:${process.env.WP_PASS}`);
+  return fetch(url, {
+    ...options,
+    headers: { Authorization: authHeader, ...(options.headers || {}) },
+  });
 }
 
 async function ensureNotDuplicate(slug) {
-	const res = await wpFetch(`/posts?slug=${encodeURIComponent(slug)}&per_page=1`, { method: 'GET' });
-	if (!res.ok) throw new Error(`WP slug check error ${res.status}: ${await res.text()}`);
-	const arr = await res.json();
-	if (Array.isArray(arr) && arr.length > 0) return { exists: true, post: { id: arr[0].id, link: arr[0].link || arr[0].guid?.rendered } };
-	return { exists: false };
+  const res = await wpFetch(
+    `/posts?slug=${encodeURIComponent(slug)}&per_page=1`,
+    { method: "GET" }
+  );
+  if (!res.ok)
+    throw new Error(`WP slug check error ${res.status}: ${await res.text()}`);
+  const arr = await res.json();
+  if (Array.isArray(arr) && arr.length > 0)
+    return {
+      exists: true,
+      post: { id: arr[0].id, link: arr[0].link || arr[0].guid?.rendered },
+    };
+  return { exists: false };
 }
 
-async function uploadFeaturedImage(buffer, filename = 'carpet-installation.png') {
-	const res = await wpFetch('/media', { method: 'POST', headers: { 'Content-Type': 'image/png', 'Content-Disposition': `attachment; filename="${filename}"` }, body: buffer });
-	if (!res.ok) throw new Error(`WP media upload error ${res.status}: ${await res.text()}`);
-	const media = await res.json();
-	return { id: media.id, url: media.source_url };
+async function uploadFeaturedImage(
+  buffer,
+  filename = "carpet-installation.png"
+) {
+  const res = await wpFetch("/media", {
+    method: "POST",
+    headers: {
+      "Content-Type": "image/png",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+    },
+    body: buffer,
+  });
+  if (!res.ok)
+    throw new Error(`WP media upload error ${res.status}: ${await res.text()}`);
+  const media = await res.json();
+  return { id: media.id, url: media.source_url };
 }
 
 async function postToWordPress({ title, content, slug, featuredMediaId }) {
-	const body = { title, content, status: 'publish', slug };
-	if (featuredMediaId) body.featured_media = featuredMediaId;
-	const res = await wpFetch('/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-	if (!res.ok) throw new Error(`WP error ${res.status}: ${await res.text()}`);
-	const data = await res.json();
-	return { id: data.id, link: data.link || data.guid?.rendered };
+  const body = { title, content, status: "publish", slug };
+  if (featuredMediaId) body.featured_media = featuredMediaId;
+  const res = await wpFetch("/posts", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`WP error ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return { id: data.id, link: data.link || data.guid?.rendered };
 }
 
 export default async function handler(req, res) {
-	if (req.method !== 'GET' && req.method !== 'POST') {
-		return res.status(405).json({ error: 'Method Not Allowed' });
-	}
-	try {
-		if (!isAuthorized(req)) {
-			return res.status(401).json({ error: 'Unauthorized' });
-		}
+  console.log("🚀 [postBlog] Handler started");
+  console.log("📝 Method:", req.method);
 
-		const isCron = hasCronHeader(req);
-		const force = req.method === 'GET' ? req.query?.force === '1' : Boolean(req.body?.force);
-		const seed = new Date().toISOString();
+  if (req.method !== "GET" && req.method !== "POST") {
+    console.log("❌ Invalid method");
+    return res.status(405).json({ error: "Method Not Allowed" });
+  }
+  try {
+    console.log("🔐 Checking authorization...");
+    console.log("   NODE_ENV:", process.env.NODE_ENV);
+    if (!isAuthorized(req)) {
+      console.log("❌ Unauthorized");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    console.log("✅ Authorized");
 
-		const post = await generateSeoPost(seed);
-		const dateSlug = formatDateSlug();
-		const timeSlug = formatTimeSlug();
+    const isCron = hasCronHeader(req);
+    const force =
+      req.method === "GET"
+        ? req.query?.force === "1"
+        : Boolean(req.body?.force);
+    const seed = new Date().toISOString();
 
-		// Cron uses stable daily slug; manual always uses unique slug with time
-		const baseDailySlug = sanitizeSlug(`carpet-installation-tips-${dateSlug}`);
-		let finalSlug = isCron && !force ? baseDailySlug : `${baseDailySlug}-${timeSlug}`;
+    console.log("⚙️ Config:", { isCron, force, seed });
 
-		if (isCron && !force) {
-			const dupe = await ensureNotDuplicate(baseDailySlug);
-			if (dupe.exists) {
-				finalSlug = `${baseDailySlug}-cron-${timeSlug}`;
-			}
-		}
+    console.log("📝 Generating blog post...");
+    const post = await generateSeoPost(seed);
+    console.log("✅ Post generated:", post.title);
+    const dateSlug = formatDateSlug();
+    const timeSlug = formatTimeSlug();
+    console.log("🏷️ Slugs:", { dateSlug, timeSlug });
 
-		let featuredMediaId = undefined, imageUrl = undefined;
-		try {
-			const imageBuffer = await generateImageB64(post.title);
-			const uploaded = await uploadFeaturedImage(imageBuffer, `carpet-tips-${dateSlug}-${timeSlug}.png`);
-			featuredMediaId = uploaded.id; imageUrl = uploaded.url;
-		} catch (_) {}
-		let contentWithImage = post.content;
-		if (imageUrl) contentWithImage = contentWithImage.replace(/<h1[^>]*>.*?<\/h1>/i, (m) => `${m}\n<p><img src="${imageUrl}" alt="${post.title}" style="max-width:100%;height:auto;border-radius:8px" /></p>`);
-		const wp = await postToWordPress({ title: post.title, content: contentWithImage, slug: finalSlug, featuredMediaId });
-		return res.status(200).json({ success: true, ...wp, cron: isCron, forced: !isCron || force });
-	} catch (err) {
-		return res.status(500).json({ error: err.message || 'Internal Server Error' });
-	}
+    // Cron uses stable daily slug; manual always uses unique slug with time
+    const baseDailySlug = sanitizeSlug(`carpet-installation-tips-${dateSlug}`);
+    let finalSlug =
+      isCron && !force ? baseDailySlug : `${baseDailySlug}-${timeSlug}`;
+    console.log("🔗 Base slug:", finalSlug);
+
+    if (isCron && !force) {
+      console.log("🔍 Checking for duplicate...");
+      const dupe = await ensureNotDuplicate(baseDailySlug);
+      if (dupe.exists) {
+        console.log("⚠️ Duplicate found, adjusting slug");
+        finalSlug = `${baseDailySlug}-cron-${timeSlug}`;
+      } else {
+        console.log("✅ No duplicate found");
+      }
+    }
+
+    let featuredMediaId = undefined,
+      imageUrl = undefined;
+    try {
+      console.log("🖼️ Generating featured image...");
+      const imageBuffer = await generateImageB64(post.title);
+      console.log("✅ Image generated, uploading to WP...");
+      const uploaded = await uploadFeaturedImage(
+        imageBuffer,
+        `carpet-tips-${dateSlug}-${timeSlug}.png`
+      );
+      featuredMediaId = uploaded.id;
+      imageUrl = uploaded.url;
+      console.log("✅ Image uploaded:", imageUrl);
+    } catch (err) {
+      console.log("⚠️ Image generation/upload failed:", err.message);
+    }
+    let contentWithImage = post.content;
+    if (imageUrl)
+      contentWithImage = contentWithImage.replace(
+        /<h1[^>]*>.*?<\/h1>/i,
+        (m) =>
+          `${m}\n<p><img src="${imageUrl}" alt="${post.title}" style="max-width:100%;height:auto;border-radius:8px" /></p>`
+      );
+
+    console.log("📤 Posting to WordPress...");
+    const wp = await postToWordPress({
+      title: post.title,
+      content: contentWithImage,
+      slug: finalSlug,
+      featuredMediaId,
+    });
+    console.log("✅ Successfully posted to WordPress!");
+    console.log("🔗 Post URL:", wp.link);
+
+    return res
+      .status(200)
+      .json({ success: true, ...wp, cron: isCron, forced: !isCron || force });
+  } catch (err) {
+    console.error("❌ ERROR:", err.message);
+    console.error("Stack:", err.stack);
+    return res
+      .status(500)
+      .json({ error: err.message || "Internal Server Error" });
+  }
 }
