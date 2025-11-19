@@ -148,7 +148,17 @@ async function wpFetch(path, options = {}) {
     "Basic " + toBase64(`${process.env.WP_USER}:${process.env.WP_PASS}`);
   return fetch(url, {
     ...options,
-    headers: { Authorization: authHeader, ...(options.headers || {}) },
+    headers: {
+      Authorization: authHeader,
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Encoding": "gzip, deflate, br",
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+      ...(options.headers || {}),
+    },
   });
 }
 
