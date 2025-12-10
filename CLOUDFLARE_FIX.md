@@ -1,6 +1,7 @@
 # Cloudflare 403 Fix for WordPress API
 
 ## Problem
+
 Your WordPress site is protected by Cloudflare, which blocks automated requests with a JavaScript challenge that can't be solved by server-side code.
 
 ## Solutions (Choose One)
@@ -26,7 +27,7 @@ Your WordPress site is protected by Cloudflare, which blocks automated requests 
 4. Name: `Allow WordPress API`
 5. Expression:
    ```
-   (http.request.uri.path contains "/wp-json/wp/v2/") and 
+   (http.request.uri.path contains "/wp-json/wp/v2/") and
    (http.request.headers["authorization"] contains "Basic")
    ```
 6. Action: **Skip** → Select **Skip Managed Challenge**
@@ -71,6 +72,7 @@ Your WordPress site is protected by Cloudflare, which blocks automated requests 
 ## Current Code Improvements
 
 The code now includes:
+
 - ✅ Complete browser headers (User-Agent, Referer, Origin, etc.)
 - ✅ Sec-Fetch headers for CORS compliance
 - ✅ Support for Cloudflare bypass token
@@ -79,6 +81,7 @@ The code now includes:
 ## Testing
 
 After implementing one of the solutions above, test by calling:
+
 ```
 https://your-vercel-app.vercel.app/api/postBlog?secret=mySuperSecretKey
 ```
