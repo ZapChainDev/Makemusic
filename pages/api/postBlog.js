@@ -116,7 +116,41 @@ Requirements:
 }
 
 async function generateImagePrompt(title) {
-  return `Photo-realistic, warm and emotional image illustrating "${title}" — a musician recording a heartfelt song, acoustic guitar, soft studio lighting, handwritten lyrics notebook, gift wrapping with headphones, romantic and celebratory mood. No text overlay.`;
+  const occasions = [
+    "birthday celebration",
+    "wedding anniversary",
+    "mother's day tribute",
+    "romantic proposal",
+    "graduation milestone",
+    "long-distance love",
+    "grief and remembrance",
+    "friendship appreciation",
+    "new baby arrival",
+    "retirement send-off",
+  ];
+  const settings = [
+    "cozy bedroom studio with fairy lights",
+    "sunlit living room with a grand piano",
+    "rustic cabin with a fireplace",
+    "rooftop at golden hour",
+    "beach at sunset",
+    "intimate coffee shop corner",
+    "lush garden with string lights",
+    "modern recording studio with city view",
+  ];
+  const styles = [
+    "cinematic film photography",
+    "warm golden-hour editorial",
+    "soft bokeh portrait style",
+    "moody candlelight atmosphere",
+    "vibrant lifestyle photography",
+    "intimate documentary style",
+  ];
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  const occasion = pick(occasions);
+  const setting = pick(settings);
+  const style = pick(styles);
+  return `${style} image illustrating "${title}". Scene: ${setting}, evoking a ${occasion}. A musician or songwriter captures pure emotion — handwritten lyrics visible, instrument in hand, genuine feeling on their face. Warm, human, authentic. No text overlay, no logos.`;
 }
 
 async function generateImageB64(title) {
