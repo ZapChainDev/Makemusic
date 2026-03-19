@@ -1,6 +1,15 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let _openai = null;
+function getOpenAI() {
+  if (!_openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OPENAI_API_KEY environment variable is not set");
+    }
+    _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return _openai;
+}
 
 function toBase64(str) {
   return Buffer.from(str, "utf8").toString("base64");
@@ -89,7 +98,7 @@ Requirements:
 - Weave in naturally: "make a song for me", "personalized song", "custom song", "song for [occasion]"
 - End with a heartfelt CTA to request a custom song
 - Output clean semantic HTML only (<h1><h2><h3><p><ul><li>). No markdown.`;
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o-mini",
     messages: [{ role: "user", content: prompt }],
     temperature: 0.8,
@@ -112,7 +121,7 @@ async function generateImagePrompt(title) {
 
 async function generateImageB64(title) {
   const prompt = await generateImagePrompt(title);
-  const result = await openai.images.generate({
+  const result = await getOpenAI().images.generate({
     model: "gpt-image-1",
     prompt,
     size: "1024x1024",

@@ -1,29 +1,33 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import StatusMessage from "../components/StatusMessage";
 
 export default function Home() {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [nextRun, setNextRun] = useState(null);
 
-  const nextRun = useMemo(() => {
-    // Vercel Cron: 0 13 * * * (13:00 UTC daily)
-    const now = new Date();
-    const next = new Date();
-    next.setUTCHours(13, 0, 0, 0);
-    if (next <= now) {
-      // Move to tomorrow 13:00 UTC
-      next.setUTCDate(next.getUTCDate() + 1);
+  useEffect(() => {
+    function computeNextRun() {
+      // Vercel Cron: 0 13 * * * (13:00 UTC daily)
+      const now = new Date();
+      const next = new Date();
+      next.setUTCHours(13, 0, 0, 0);
+      if (next <= now) {
+        // Move to tomorrow 13:00 UTC
+        next.setUTCDate(next.getUTCDate() + 1);
+      }
+      const local = new Intl.DateTimeFormat(undefined, {
+        dateStyle: "full",
+        timeStyle: "short",
+      }).format(next);
+      const eastern = new Intl.DateTimeFormat("en-US", {
+        dateStyle: "full",
+        timeStyle: "short",
+        timeZone: "America/New_York",
+      }).format(next);
+      return { local, eastern };
     }
-    const local = new Intl.DateTimeFormat(undefined, {
-      dateStyle: "full",
-      timeStyle: "short",
-    }).format(next);
-    const eastern = new Intl.DateTimeFormat("en-US", {
-      dateStyle: "full",
-      timeStyle: "short",
-      timeZone: "America/New_York",
-    }).format(next);
-    return { local, eastern };
+    setNextRun(computeNextRun());
   }, []);
 
   async function handlePost() {
@@ -65,8 +69,10 @@ export default function Home() {
           to WordPress.
         </p>
         <p style={{ marginTop: 8, color: "#111" }}>
-          <strong>Next scheduled run</strong>: {nextRun.local} (your time) ·{" "}
-          {nextRun.eastern} (Eastern)
+          <strong>Next scheduled run</strong>:{" "}
+          {nextRun
+            ? `${nextRun.local} (your time) · ${nextRun.eastern} (Eastern)`
+            : "Calculating..."}
         </p>
         <button className="btn" onClick={handlePost} disabled={loading}>
           {loading ? "Posting..." : "Post Blog Now"}
