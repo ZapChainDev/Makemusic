@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/postBlog?secret=mySuperSecretKey",
+      "path": "/api/postBlog",
       "schedule": "0 13 * * *"
     }
   ]
