@@ -111,8 +111,10 @@ Requirements:
   const title = titleMatch
     ? titleMatch[1].replace(/<[^>]+>/g, "").trim()
     : "Why a Personalized Song Is the Perfect Gift";
+  // Strip the <h1> from content so title, image, and body are fully separate in WP
+  const content = html.replace(/<h1[^>]*>.*?<\/h1>/i, "").trim();
   console.log("  📝 Extracted title:", title);
-  return { title, content: html };
+  return { title, content };
 }
 
 async function generateImagePrompt(title) {
