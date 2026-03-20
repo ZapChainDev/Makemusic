@@ -310,18 +310,10 @@ export default async function handler(req, res) {
     } catch (err) {
       console.log("⚠️ Image generation/upload failed:", err.message);
     }
-    let contentWithImage = post.content;
-    if (imageUrl)
-      contentWithImage = contentWithImage.replace(
-        /<h1[^>]*>.*?<\/h1>/i,
-        (m) =>
-          `${m}\n<p><img src="${imageUrl}" alt="${post.title}" style="max-width:100%;height:auto;border-radius:8px" /></p>`,
-      );
-
     console.log("📤 Posting to WordPress...");
     const wp = await postToWordPress({
       title: post.title,
-      content: contentWithImage,
+      content: post.content,
       slug: finalSlug,
       featuredMediaId,
     });
