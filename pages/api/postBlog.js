@@ -119,40 +119,64 @@ Requirements:
 
 async function generateImagePrompt(title) {
   const occasions = [
-    "birthday celebration",
-    "wedding anniversary",
+    "birthday celebration with balloons and cake",
+    "wedding anniversary dinner",
     "mother's day tribute",
-    "romantic proposal",
-    "graduation milestone",
-    "long-distance love",
-    "grief and remembrance",
-    "friendship appreciation",
-    "new baby arrival",
-    "retirement send-off",
+    "romantic proposal moment",
+    "graduation milestone party",
+    "long-distance reunion filled with joy",
+    "grief and remembrance gathering",
+    "friendship appreciation get-together",
+    "new baby arrival and family joy",
+    "retirement send-off party",
+    "personal growth and self-improvement journey",
+    "vision board and goal-setting session",
+    "self-care and confidence-building moment",
+    "community cookout and celebration",
+    "road trip adventure with friends",
   ];
   const settings = [
-    "cozy bedroom studio with fairy lights",
-    "sunlit living room with a grand piano",
-    "rustic cabin with a fireplace",
-    "rooftop at golden hour",
-    "beach at sunset",
-    "intimate coffee shop corner",
-    "lush garden with string lights",
-    "modern recording studio with city view",
+    "vibrant rooftop party at golden hour with city skyline",
+    "beachfront at sunset with warm glowing light",
+    "sleek modern recording studio with city view",
+    "lively birthday party with colorful decorations",
+    "cozy living room with a grand piano as the centerpiece",
+    "intimate soul food dinner with candles and family",
+    "backstage at a music venue with neon lights",
+    "sunlit urban rooftop with people dancing",
+    "stylish lounge with moody blue and purple lighting",
+    "outdoor festival stage with a jubilant crowd",
+    "gym or yoga studio reflecting personal improvement",
+    "lush garden with string lights and a choir performing",
+  ];
+  const instruments = [
+    "a gleaming saxophone",
+    "a shining trumpet",
+    "a grand piano",
+    "a full drum kit",
+    "a keyboard synthesizer",
+    "a upright bass",
+    "a full gospel choir",
+    "a brass section",
+    "sleek studio headphones and a microphone",
+    "congas and percussion instruments",
   ];
   const styles = [
-    "cinematic film photography",
+    "cinematic widescreen photography",
     "warm golden-hour editorial",
-    "soft bokeh portrait style",
-    "moody candlelight atmosphere",
-    "vibrant lifestyle photography",
+    "vibrant R&B music video aesthetic",
+    "moody atmospheric hip-hop visual",
+    "rich soul and gospel photography style",
+    "soft bokeh lifestyle portrait",
+    "high-contrast urban photography",
     "intimate documentary style",
   ];
   const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
   const occasion = pick(occasions);
   const setting = pick(settings);
+  const instrument = pick(instruments);
   const style = pick(styles);
-  return `${style} image illustrating "${title}". Scene: ${setting}, evoking a ${occasion}. A musician or songwriter captures pure emotion — handwritten lyrics visible, instrument in hand, genuine feeling on their face. Warm, human, authentic. No text overlay, no logos.`;
+  return `${style} image illustrating "${title}". Scene: ${setting}, evoking a ${occasion}. A musician or performer with ${instrument} expresses deep emotion — soulful, powerful, authentic R&B and hip-hop energy. Warm, human, cinematic. No text overlay, no logos, no guitars.`;
 }
 
 async function generateImageB64(title) {
