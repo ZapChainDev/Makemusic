@@ -260,7 +260,7 @@ export default async function handler(req, res) {
     }
     console.log("✅ Authorized");
 
-    const isCron = hasCronHeader(req);
+    const isCron = (req.headers?.authorization || "").startsWith("Bearer ");
     const force =
       req.method === "GET"
         ? req.query?.force === "1"
