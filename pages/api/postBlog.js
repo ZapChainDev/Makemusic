@@ -17,29 +17,27 @@ function toBase64(str) {
 
 const CRON_SECRET = process.env.CRON_SECRET || "mySuperSecretKey";
 
-function hasCronHeader(req) {
-  const h = req.headers || {};
-  const val = h["x-vercel-cron"] ?? h["x-vercel-schedule"];
-  if (Array.isArray(val)) return val.length > 0 && Boolean(val[0]);
-  return typeof val !== "undefined" && String(val).length > 0;
-}
-
 function isAuthorized(req) {
   // Always allow in development mode
   if (process.env.NODE_ENV !== "production") return true;
-  // If a secret is provided, it MUST match the hardcoded value
+
+  // Vercel cron jobs send: Authorization: Bearer <CRON_SECRET>
+  const authHeader = req.headers?.authorization || "";
+  if (authHeader === `Bearer ${CRON_SECRET}`) return true;
+
+  // Also allow manual trigger via ?secret= query param
   const provided =
     (req.query && req.query.secret) || (req.body && req.body.secret);
   if (typeof provided !== "undefined") {
     return provided === CRON_SECRET;
   }
-  // Otherwise allow scheduled runs via Vercel header
-  if (hasCronHeader(req)) return true;
+
   // Or allow logged-in site users via cookie
   const cookieAuth =
     req.cookies?.site_auth === "1" ||
     req.cookies?.get?.("site_auth")?.value === "1";
   if (cookieAuth) return true;
+
   return false;
 }
 
